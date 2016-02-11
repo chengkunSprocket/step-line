@@ -8,11 +8,13 @@ mousedownNode = null
 mouseupNode = null
 mousedownLink = null
 activeLink = null
+directVerticle = 1
 
 resetMouseAction = ->
   mousedownNode = null
   mouseupNode = null
   mousedownLink = null
+  directVerticle = 1
 
 svg = d3.select('body')
   .append('svg')
@@ -45,19 +47,23 @@ svg.append('svg:defs').append('svg:marker')
 nodes = [
   {
     id: 'step1'
-    targets: ['step2', 'step3', 'terminator']
+    targets: ['step2', 'step3', 'step4', 'terminator']
   }
   {
     id: 'step2'
-    targets: ['step3']
+    targets: []
   }
   {
     id: 'step3'
-    targets: ['terminator']
+    targets: []
   }
   {
     id: 'step4'
-    targets: ['terminator']
+    targets: []
+  }
+  {
+    id: 'step5'
+    targets: []
   }
   {
     id: 'terminator'
@@ -85,10 +91,10 @@ setPos = (d) ->
   }
 
 setPath = (d) ->
-  direct = d.direct or 1
+  direct = d.direct or -1
   deltaIndex = d.target.index - d.source.index
   sx = 1
-  sy = 4
+  sy = 4 * direct
   deltaX = d.target.x - d.source.x
   deltaY = d.target.y - d.source.y
   dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
@@ -109,23 +115,53 @@ setPath = (d) ->
     targetX += sx * deltaIndex
     targetY -= sy * deltaIndex
     cx = (targetX + sourceX) / 2
-    cy = 240 - 40 * (deltaIndex - 1) * direct
+    cy = 250 - (50 + 40* (deltaIndex-2)) * direct
     return "M#{sourceX},#{sourceY} C#{cx},#{cy} #{cx},#{cy} #{targetX},#{targetY}"
 
 dragLine = svg.append('svg:path')
   .attr('class', 'link dragline hidden')
   .attr('d', 'M0,0L0,0')
 
+addButtonR = 30
+addButton = svg.append('svg:g')
+  .attr('class', 'add-btn')
+  .attr('width', addButtonR)
+  .attr('height', addButtonR)
+  .attr('transform', "translate(#{width / 2 - addButtonR}, #{addButtonR + 10})")
+  .on('click', ->
+    len = nodes.length
+    nodes.splice len - 1, 0,
+      index: len
+      id: "step#{len}"
+      targets: []
+    console.log nodes
+    reset()
+  )
+
+addButton
+  .append('svg:circle')
+  .attr('r', addButtonR)
+
+addButton
+  .append('svg:text')
+  .attr('dy', 8)
+  .attr('fill', '#333')
+  .attr('text-anchor', 'middle')
+  .text('+')
+
 arrows = svg.append('svg:g').selectAll '.link'
 steps = svg.append('svg:g').selectAll '.step'
+groups = null
 
 reset = ->
   part = width / (nodes.length + 1)
-  groups =
-    steps.data(nodes)
+  groups = steps.data(nodes)
+  groups.exit().remove()
+  groups
       .enter().append('g')
       .attr('transform', (d) ->
         pos = setPos d
+        console.log pos
         x = pos.x
         y = pos.y
         d.x = x
@@ -230,23 +266,19 @@ reset = ->
           link.left = false
           link.right = false
           link[direction] = true
-          if target.y > source.y
-            link.direct = -1
-          else
-            link.direct = 1
+          link.direct = directVerticle
         else
           link =
             source: source
             target: target
             left: false
             right: false
+            direct: directVerticle
           link[direction] = true
-          if target.y > source.y
-            link.direct = -1
-          else
-            link.direct = 1
+
           links.push link
         activeLink = link
+
         reset()
       )
 
@@ -261,22 +293,14 @@ reset = ->
       )
 
 
-mousedown = ->
-  svg.classed 'active', true
-  point = d3.mouse this
-  node =
-    id
-
 mousemove = ->
   if not mousedownNode
     return
   point = d3.mouse this
-  #dragLine.attr 'd', "M#{mousedownNode.x},#{mousedownNode.y}L#{point[0]},#{point[1]}"
   cx = (point[0] + mousedownNode.x) / 2
-  depth = (point[0] - mousedownNode.x) / part
-  #direction = if point[1] >  mousedownNode.y then 1 else -1
-  direction = -1
-  cy = 240 + 40 * (depth - 1) * direction
+  depth = Math.abs(point[0] - mousedownNode.x) / part
+  directVerticle = if point[1] >  mousedownNode.y then -1 else 1
+  cy = 250 - (50 + 40* (depth-2)) * directVerticle
   if depth > 1
     dragLine.attr 'd', "M#{mousedownNode.x},#{mousedownNode.y} C#{cx},#{cy} #{cx},#{cy} #{point[0]},#{point[1]}"
   else
@@ -292,8 +316,10 @@ mouseup = ->
   resetMouseAction()
 
 svg
-#  .on('mousedown', mousedown)
   .on('mousemove', mousemove)
   .on('mouseup', mouseup)
 
 reset()
+
+
+########### vue.js ################

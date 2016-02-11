@@ -59,3 +59,11 @@ text.id {
   text-anchor: middle;
   font-weight: bold;
 }
+.add-btn circle {
+  fill: #fff;
+  stroke: #333;
+  cursor: pointer;
+}
+.add-btn text {
+  font-size: 30px;
+}
